@@ -8,7 +8,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const corsOptions: CorsOptions = {
-    origin: ['http://localhost:3000'],
+    origin: ['http://localhost:3000', 'https://crm.smartalgorhythm.com'],
     credentials: true,
   };
   app.enableCors(corsOptions);
