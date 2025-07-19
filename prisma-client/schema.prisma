@@ -1,0 +1,315 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres", "relationJoins"]
+  output          = "../prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String        @id @default(cuid())
+  firstName         String
+  lastName          String
+  email             String        @unique
+  password          String
+  countryCode       String
+  phoneNumber       String
+  role              Role          @default(EMPLOYEE)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  organisationId    String?
+  organisation      Organisation? @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  addedActivities   Activity[]
+  sessions          Session[]
+  tokens            Token[]
+  contactFollowUps  Contact[]
+  createdNotes      Note[]
+  activityFollowUps Activity[]    @relation("Activity Follow Ups")
+
+  @@index([organisationId])
+  @@index([role])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tokens    Token[]
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model Token {
+  id           String   @id @default(cuid())
+  userId       String
+  sessionId    String
+  session      Session  @relation(fields: [sessionId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+  scopes       Scope[]
+  accessToken  String
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([accessToken])
+  @@index([createdAt])
+}
+
+model Region {
+  id        String     @id @default(cuid())
+  name      String
+  state     String
+  country   String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  branches  Branch[]
+  schedules Schedule[]
+
+  @@index([state])
+  @@index([country])
+  @@index([name])
+  @@index([createdAt])
+}
+
+model Schedule {
+  id           String       @id @default(cuid())
+  regionId     String
+  region       Region       @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  dayOfMonth   Int
+  createdOrgId String
+  createdOrg   Organisation @relation(fields: [createdOrgId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([regionId])
+  @@index([createdOrgId])
+  @@index([dayOfMonth])
+  @@index([createdAt])
+}
+
+model Branch {
+  id               String       @id @default(cuid())
+  address          String?
+  city             String
+  postalCode       String?
+  landlineNumber   String?
+  regionId         String
+  region           Region       @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organisationId   String
+  organisation     Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  type             BranchType
+  contacts         Contact[]
+  pointOfContactId String?      @unique
+  pointOfContact   Contact?     @relation("PointOfContact", fields: [pointOfContactId], references: [id], onDelete: Cascade)
+
+  @@index([regionId])
+  @@index([organisationId])
+  @@index([city])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Organisation {
+  id                   String         @id @default(cuid())
+  name                 String
+  team                 User[]
+  branches             Branch[]
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  tags                 Tag[]          @relation("Organisation Tags")
+  contactOrganisations Organisation[] @relation("Contact Organisations")
+  contactOrgId         String?
+  contactOrganisation  Organisation?  @relation("Contact Organisations", fields: [contactOrgId], references: [id], onDelete: SetNull)
+  createdTags          Tag[]
+  contacts             Contact[]      @relation("Contact Organisations")
+  createdSchedule      Schedule[]
+
+  @@index([name])
+  @@index([contactOrgId])
+  @@index([createdAt])
+}
+
+model Tag {
+  id                    String         @id @default(cuid())
+  title                 String
+  description           String?
+  tagType               TagType        @default(ACTIVITY)
+  createdOrganisationId String
+  createdOrganisation   Organisation   @relation(fields: [createdOrganisationId], references: [id], onDelete: Cascade)
+  organisations         Organisation[] @relation("Organisation Tags")
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  activities            Activity[]     @relation("Activity Tags")
+  contacts              Contact[]      @relation("Contact Tags")
+
+  @@index([createdOrganisationId])
+  @@index([tagType])
+  @@index([title])
+  @@index([createdAt])
+}
+
+model Activity {
+  id                 String       @id @default(cuid())
+  title              String
+  description        String
+  addedById          String
+  addedBy            User         @relation(fields: [addedById], references: [id], onDelete: Cascade)
+  tags               Tag[]        @relation("Activity Tags")
+  needFollowUp       Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  type               ActivityType @default(MISCELLANEOUS)
+  contactId          String
+  contact            Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  followUpDate       DateTime?
+  assignedToId       String?
+  assignedTo         User?        @relation("Activity Follow Ups", fields: [assignedToId], references: [id], onDelete: SetNull)
+  followUpActivityId String?
+  followUpActivity   Activity?    @relation("Activity to follow up activity Mapping", fields: [followUpActivityId], references: [id], onDelete: Cascade)
+  followUpActivities Activity[]   @relation("Activity to follow up activity Mapping")
+
+  @@index([addedById])
+  @@index([contactId])
+  @@index([assignedToId])
+  @@index([followUpActivityId])
+  @@index([needFollowUp])
+  @@index([type])
+  @@index([followUpDate])
+  @@index([createdAt])
+  @@index([title])
+}
+
+model Note {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  category    NoteCategory
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  contactId   String
+  contact     Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([createdById])
+  @@index([category])
+  @@index([createdAt])
+  @@index([title])
+}
+
+model Contact {
+  id                String       @id @default(cuid())
+  name              String
+  email             String?
+  phoneNumber       String
+  alternateNumber   String?
+  branchId          String?
+  branch            Branch?      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  contactType       ContactType
+  leadSegment       LeadSegment?
+  leadScore         Int?
+  followUpFrequency Int?
+  followUpOn        DateTime?
+  assignedToId      String?
+  assignedTo        User?        @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  pocBranch         Branch?      @relation("PointOfContact")
+  activities        Activity[]
+  notes             Note[]
+  tags              Tag[]        @relation("Contact Tags")
+  contactOrgId      String
+  contactOrg        Organisation @relation("Contact Organisations", fields: [contactOrgId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+  @@index([assignedToId])
+  @@index([contactOrgId])
+  @@index([contactType])
+  @@index([leadSegment])
+  @@index([leadScore])
+  @@index([followUpOn])
+  @@index([createdAt])
+  @@index([name])
+  @@index([email])
+  @@index([phoneNumber])
+}
+
+enum NoteCategory {
+  CALL
+  CONTACT
+  ENQUIRY
+  QUOTATION
+  PURCHASE
+  MISCELLANEOUS
+}
+
+enum Role {
+  EMPLOYEE
+  ADMIN
+}
+
+enum Scope {
+  CALENDAR
+  YOUTUBE
+  EMAIL
+  PROFILE
+  OPENID
+  SHEETS
+  DOCS
+}
+
+enum ContactType {
+  LEAD
+  PROSPECT
+  CUSTOMER
+}
+
+enum LeadSegment {
+  HOT
+  WARM
+  COLD
+}
+
+enum BranchType {
+  HEADQUARTERS
+  BRANCH
+}
+
+enum TagType {
+  ORGANISATION
+  CONTACT
+  ACTIVITY
+}
+
+enum ActivityType {
+  ENQUIRY
+  QUOTATION_REQUEST
+  PURCHASE_ORDER
+  INVOICE
+  PAYMENT
+  DELIVERY
+  RETURN
+  COMPLAINT
+  MISCELLANEOUS
+}

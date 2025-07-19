@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "TagType" AS ENUM ('ORGANISATION', 'CONTACT', 'ACTIVITY');
+
+-- AlterTable
+ALTER TABLE "Tag" ADD COLUMN     "tagType" "TagType" NOT NULL DEFAULT 'ACTIVITY';
