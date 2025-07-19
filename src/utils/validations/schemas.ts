@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const userSchema = z.object({
   firstName: z.string().min(1, 'Name is required'),
   lastName: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
+  email: z.email('Invalid email address'),
   countryCode: z.string().min(1, 'Country code is required'),
   phoneNumber: z.string().min(1, 'Phone number is required'),
   chosenPassword: z
@@ -20,7 +20,7 @@ export const updateUserSchema = z
   .object({
     firstName: z.string().min(1, 'First name cannot be empty').optional(),
     lastName: z.string().min(1, 'Last name cannot be empty').optional(),
-    email: z.string().email('Invalid email address').optional(),
+    email: z.email('Invalid email address').optional(),
     countryCode: z.string().min(1, 'Country code cannot be empty').optional(),
     phoneNumber: z.string().min(1, 'Phone number cannot be empty').optional(),
   })
@@ -43,8 +43,8 @@ export const createBranchSchema = z.object({
   address: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   postalCode: z.string().optional(),
-  type: z.nativeEnum(BranchType, {
-    errorMap: () => ({
+  type: z.enum(BranchType, {
+    error: () => ({
       message: 'Branch type must be either HEADQUARTERS or BRANCH',
     }),
   }),
@@ -53,7 +53,7 @@ export const createBranchSchema = z.object({
 export const tagSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  tagType: z.nativeEnum(TagType, { message: 'Invalid tag type' }),
+  tagType: z.enum(TagType, { message: 'Invalid tag type' }),
   createdOrganisationId: z.string().min(1, 'Organisation ID is required'),
 });
 
@@ -61,7 +61,7 @@ export const createContactSchema = z.object({
   name: z.string().min(1, { message: 'Name is required' }),
   phoneNumber: z.string().min(1, { message: 'Phone number is required' }),
   branchId: z.string().min(1, { message: 'Branch ID is required' }),
-  contactType: z.nativeEnum(ContactType, { message: 'Invalid contact type' }),
+  contactType: z.enum(ContactType, { message: 'Invalid contact type' }),
   contactOrgId: z
     .string()
     .min(1, { message: 'Contact Organization ID is required' }),
