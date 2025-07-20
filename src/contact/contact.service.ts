@@ -151,6 +151,7 @@ export class ContactService {
       include: {
         branch: {
           include: {
+            region: true,
             organisation: true,
           },
         },
