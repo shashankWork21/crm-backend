@@ -104,33 +104,36 @@ export class ContactService {
   }
 
   async bulkContactCreate(data: CreateContactDto[]) {
-    return this.db.$transaction(async (tx) => {
-      const contacts: Contact[] = [];
+    return this.db.$transaction(
+      async (tx) => {
+        const contacts: Contact[] = [];
 
-      for (const contactData of data) {
-        const existingContact = await tx.contact.findFirst({
-          where: {
-            name: contactData.name,
-            phoneNumber: contactData.phoneNumber,
-            contactOrgId: contactData.contactOrgId,
-          },
-        });
-        if (existingContact) {
-          await tx.contact.update({
-            where: { id: existingContact.id },
+        for (const contactData of data) {
+          const existingContact = await tx.contact.findFirst({
+            where: {
+              name: contactData.name,
+              phoneNumber: contactData.phoneNumber,
+              contactOrgId: contactData.contactOrgId,
+            },
+          });
+          if (existingContact) {
+            await tx.contact.update({
+              where: { id: existingContact.id },
+              data: contactData,
+            });
+            contacts.push(existingContact);
+            continue;
+          }
+          const contact = await tx.contact.create({
             data: contactData,
           });
-          contacts.push(existingContact);
-          continue;
+          contacts.push(contact);
         }
-        const contact = await tx.contact.create({
-          data: contactData,
-        });
-        contacts.push(contact);
-      }
 
-      return contacts;
-    });
+        return contacts;
+      },
+      { maxWait: 10000, timeout: 30000 },
+    );
   }
 
   async deleteContactById(id: string) {

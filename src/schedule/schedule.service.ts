@@ -86,31 +86,34 @@ export class ScheduleService {
   }
 
   async bulkCreateSchedule(data: CreateScheduleDto[]) {
-    return this.db.$transaction(async (tx) => {
-      const createdSchedules: Schedule[] = [];
+    return this.db.$transaction(
+      async (tx) => {
+        const createdSchedules: Schedule[] = [];
 
-      for (const schedule of data) {
-        if (!schedule.regionId) {
-          throw new Error('Region ID is required for each schedule');
+        for (const schedule of data) {
+          if (!schedule.regionId) {
+            throw new Error('Region ID is required for each schedule');
+          }
+          const existingSchedule = await tx.schedule.findFirst({
+            where: {
+              regionId: schedule.regionId,
+              dayOfMonth: schedule.dayOfMonth,
+            },
+          });
+
+          if (existingSchedule) {
+            continue;
+          }
+          const createdSchedule = await tx.schedule.create({
+            data: schedule,
+          });
+
+          createdSchedules.push(createdSchedule);
         }
-        const existingSchedule = await tx.schedule.findFirst({
-          where: {
-            regionId: schedule.regionId,
-            dayOfMonth: schedule.dayOfMonth,
-          },
-        });
 
-        if (existingSchedule) {
-          continue;
-        }
-        const createdSchedule = await tx.schedule.create({
-          data: schedule,
-        });
-
-        createdSchedules.push(createdSchedule);
-      }
-
-      return createdSchedules;
-    });
+        return createdSchedules;
+      },
+      { maxWait: 10000, timeout: 30000 },
+    );
   }
 }

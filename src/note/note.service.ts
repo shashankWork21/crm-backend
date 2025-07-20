@@ -64,6 +64,10 @@ export class NoteService {
   async bulkAddNotes(data: CreateNoteDto[]) {
     const notes = await this.db.$transaction(
       data.map((noteData) => this.db.note.create({ data: noteData })),
+      {
+        maxWait: 10000,
+        timeout: 30000,
+      },
     );
     return notes;
   }

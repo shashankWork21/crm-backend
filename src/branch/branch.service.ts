@@ -67,29 +67,32 @@ export class BranchService {
 
   async bulkCreateBranches(data: CreateBranchDto[]) {
     try {
-      const branches = await this.db.$transaction(async (tx) => {
-        const results: Branch[] = [];
-        for (const branchData of data) {
-          const existingBranch = await tx.branch.findFirst({
-            where: {
-              organisationId: branchData.organisationId,
-              type: BranchType.HEADQUARTERS,
-            },
-          });
-
-          if (existingBranch) {
-            const updated = await tx.branch.update({
-              where: { id: existingBranch.id },
-              data: branchData,
+      const branches = await this.db.$transaction(
+        async (tx) => {
+          const results: Branch[] = [];
+          for (const branchData of data) {
+            const existingBranch = await tx.branch.findFirst({
+              where: {
+                organisationId: branchData.organisationId,
+                type: BranchType.HEADQUARTERS,
+              },
             });
-            results.push(updated);
-          } else {
-            const created = await tx.branch.create({ data: branchData });
-            results.push(created);
+
+            if (existingBranch) {
+              const updated = await tx.branch.update({
+                where: { id: existingBranch.id },
+                data: branchData,
+              });
+              results.push(updated);
+            } else {
+              const created = await tx.branch.create({ data: branchData });
+              results.push(created);
+            }
           }
-        }
-        return results;
-      });
+          return results;
+        },
+        { maxWait: 10000, timeout: 30000 },
+      );
       return branches;
     } catch (error) {
       throw new Error('Error creating branches: ' + error.message);

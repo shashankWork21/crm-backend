@@ -66,29 +66,31 @@ export class RegionService {
     try {
       const results: Region[] = [];
 
-      await this.db.$transaction(async (prisma) => {
-        for (const regionData of data) {
-          // Check if region already exists with same name and state
-          const existingRegion = await prisma.region.findFirst({
-            where: {
-              name: regionData.name,
-              state: regionData.state,
-            },
-          });
-          if (existingRegion) {
-            results.push(existingRegion);
-          } else {
-            const { success, errors } = validateRegionData(regionData);
-            if (!success) {
-              throw new Error(JSON.stringify(errors));
-            }
-            const newRegion = await prisma.region.create({
-              data: regionData,
+      await this.db.$transaction(
+        async (prisma) => {
+          for (const regionData of data) {
+            const existingRegion = await prisma.region.findFirst({
+              where: {
+                name: regionData.name,
+                state: regionData.state,
+              },
             });
-            results.push(newRegion);
+            if (existingRegion) {
+              results.push(existingRegion);
+            } else {
+              const { success, errors } = validateRegionData(regionData);
+              if (!success) {
+                throw new Error(JSON.stringify(errors));
+              }
+              const newRegion = await prisma.region.create({
+                data: regionData,
+              });
+              results.push(newRegion);
+            }
           }
-        }
-      });
+        },
+        { maxWait: 10000, timeout: 30000 },
+      );
 
       return results;
     } catch (error) {
